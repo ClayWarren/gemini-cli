@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import * as readline from 'readline';
 import {
   Config,
   ToolCallRequestInfo,
@@ -35,8 +36,8 @@ function getResponseText(response: GenerateContentResponse): string | null {
         return null;
       }
       return candidate.content.parts
-        .filter((part) => part.text)
-        .map((part) => part.text)
+        .filter((part: Part) => part.text)
+        .map((part: Part) => part.text)
         .join('');
     }
   }
@@ -60,15 +61,33 @@ export async function runNonInteractive(
 
   const chat = await geminiClient.getChat();
   const abortController = new AbortController();
-  const queuedMessages: Content[] = [
-    { role: 'user', parts: [{ text: input }] },
-  ];
+  const queuedMessages: Content[] = input
+    .split('\n')
+    .filter((line) => line.trim() !== '')
+    .map((line) => ({ role: 'user', parts: [{ text: line }] }));
+
+  let stdinClosed = false;
+  const rl = readline.createInterface({
+    input: process.stdin,
+    terminal: false,
+  });
+
+  rl.on('line', (line) => {
+    if (line.trim() !== '') {
+      queuedMessages.push({ role: 'user', parts: [{ text: line }] });
+    }
+  });
+
+  rl.on('close', () => {
+    stdinClosed = true;
+  });
 
   try {
-    while (queuedMessages.length > 0) {
+    while (!stdinClosed || queuedMessages.length > 0) {
       const currentMessage = queuedMessages.shift();
       if (!currentMessage) {
-        break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        continue;
       }
       const functionCalls: FunctionCall[] = [];
 
