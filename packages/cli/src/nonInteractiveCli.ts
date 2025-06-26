@@ -60,14 +60,20 @@ export async function runNonInteractive(
 
   const chat = await geminiClient.getChat();
   const abortController = new AbortController();
-  let currentMessages: Content[] = [{ role: 'user', parts: [{ text: input }] }];
+  const queuedMessages: Content[] = [
+    { role: 'user', parts: [{ text: input }] },
+  ];
 
   try {
-    while (true) {
+    while (queuedMessages.length > 0) {
+      const currentMessage = queuedMessages.shift();
+      if (!currentMessage) {
+        break;
+      }
       const functionCalls: FunctionCall[] = [];
 
       const responseStream = await chat.sendMessageStream({
-        message: currentMessages[0]?.parts || [], // Ensure parts are always provided
+        message: currentMessage.parts || [], // Ensure parts are always provided
         config: {
           abortSignal: abortController.signal,
           tools: [
@@ -129,10 +135,9 @@ export async function runNonInteractive(
             }
           }
         }
-        currentMessages = [{ role: 'user', parts: toolResponseParts }];
+        queuedMessages.push({ role: 'user', parts: toolResponseParts });
       } else {
         process.stdout.write('\n'); // Ensure a final newline
-        return;
       }
     }
   } catch (error) {
