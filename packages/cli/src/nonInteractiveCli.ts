@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import * as readline from 'readline';
 import {
   Config,
   ToolCallRequestInfo,
@@ -61,38 +60,14 @@ export async function runNonInteractive(
 
   const chat = await geminiClient.getChat();
   const abortController = new AbortController();
-  const queuedMessages: Content[] = input
-    .split('\n')
-    .filter((line) => line.trim() !== '')
-    .map((line) => ({ role: 'user', parts: [{ text: line }] }));
-
-  let stdinClosed = false;
-  const rl = readline.createInterface({
-    input: process.stdin,
-    terminal: false,
-  });
-
-  rl.on('line', (line) => {
-    if (line.trim() !== '') {
-      queuedMessages.push({ role: 'user', parts: [{ text: line }] });
-    }
-  });
-
-  rl.on('close', () => {
-    stdinClosed = true;
-  });
+  let currentMessages: Content[] = [{ role: 'user', parts: [{ text: input }] }];
 
   try {
-    while (!stdinClosed || queuedMessages.length > 0) {
-      const currentMessage = queuedMessages.shift();
-      if (!currentMessage) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        continue;
-      }
+    while (true) {
       const functionCalls: FunctionCall[] = [];
 
       const responseStream = await chat.sendMessageStream({
-        message: currentMessage.parts || [], // Ensure parts are always provided
+        message: currentMessages[0]?.parts || [], // Ensure parts are always provided
         config: {
           abortSignal: abortController.signal,
           tools: [
@@ -136,7 +111,9 @@ export async function runNonInteractive(
 
           if (toolResponse.error) {
             console.error(
-              `Error executing tool ${fc.name}: ${toolResponse.resultDisplay || toolResponse.error.message}`,
+              `Error executing tool ${fc.name}: ${
+                toolResponse.resultDisplay || toolResponse.error.message
+              }`,
             );
             process.exit(1);
           }
@@ -154,9 +131,10 @@ export async function runNonInteractive(
             }
           }
         }
-        queuedMessages.push({ role: 'user', parts: toolResponseParts });
+        currentMessages = [{ role: 'user', parts: toolResponseParts }];
       } else {
         process.stdout.write('\n'); // Ensure a final newline
+        return;
       }
     }
   } catch (error) {

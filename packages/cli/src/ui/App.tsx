@@ -4,7 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+  type ReactNode,
+} from 'react';
 import {
   Box,
   DOMElement,
@@ -70,6 +77,7 @@ import { checkForUpdates } from './utils/updateCheck.js';
 import ansiEscapes from 'ansi-escapes';
 import { OverflowProvider } from './contexts/OverflowContext.js';
 import { ShowMoreLines } from './components/ShowMoreLines.js';
+import { MessageQueue } from './components/MessageQueue.js';
 
 const CTRL_EXIT_PROMPT_DURATION_MS = 1000;
 
@@ -104,7 +112,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
   const [staticKey, setStaticKey] = useState(0);
   const refreshStatic = useCallback(() => {
     stdout.write(ansiEscapes.clearTerminal);
-    setStaticKey((prev) => prev + 1);
+    setStaticKey((prev: number) => prev + 1);
   }, [setStaticKey, stdout]);
 
   const [geminiMdFileCount, setGeminiMdFileCount] = useState<number>(0);
@@ -168,7 +176,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
   } = useEditorSettings(settings, setEditorError, addItem);
 
   const toggleCorgiMode = useCallback(() => {
-    setCorgiMode((prev) => !prev);
+    setCorgiMode((prev: boolean) => !prev);
   }, []);
 
   const performMemoryRefresh = useCallback(async () => {
@@ -356,7 +364,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     }
 
     if (key.ctrl && input === 'o') {
-      setShowErrorDetails((prev) => !prev);
+      setShowErrorDetails((prev: boolean) => !prev);
     } else if (key.ctrl && input === 't') {
       const newValue = !showToolDescriptions;
       setShowToolDescriptions(newValue);
@@ -408,8 +416,9 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     streamingState,
     submitQuery,
     initError,
-    pendingHistoryItems: pendingGeminiHistoryItems,
+    pendingGeminiHistoryItems,
     thought,
+    messageQueue,
   } = useGeminiStream(
     config.getGeminiClient(),
     history,
@@ -476,8 +485,6 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     };
     fetchUserMessages();
   }, [history, logger]);
-
-  const isInputActive = streamingState === StreamingState.Idle && !initError;
 
   const handleClearScreen = useCallback(() => {
     clearItems();
@@ -564,17 +571,8 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
   if (quittingMessages) {
     return (
       <Box flexDirection="column" marginBottom={1}>
-        {quittingMessages.map((item) => (
-          <HistoryItemDisplay
-            key={item.id}
-            availableTerminalHeight={
-              constrainHeight ? availableTerminalHeight : undefined
-            }
-            terminalWidth={terminalWidth}
-            item={item}
-            isPending={false}
-            config={config}
-          />
+        {quittingMessages.map((item: HistoryItem, index: number) => (
+          <Text key={index}>{item.text}</Text>
         ))}
       </Box>
     );
@@ -618,7 +616,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
             )),
           ]}
         >
-          {(item) => item}
+          {(item: ReactNode) => item}
         </Static>
         <OverflowProvider>
           <Box ref={pendingHistoryItemRef} flexDirection="column">
@@ -776,7 +774,8 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
                 </OverflowProvider>
               )}
 
-              {isInputActive && (
+              <Box flexDirection="column">
+                <MessageQueue messages={messageQueue} />
                 <InputPrompt
                   buffer={buffer}
                   inputWidth={inputWidth}
@@ -789,7 +788,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
                   shellModeActive={shellModeActive}
                   setShellModeActive={setShellModeActive}
                 />
-              )}
+              </Box>
             </>
           )}
 

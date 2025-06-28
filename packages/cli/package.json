@@ -29,7 +29,8 @@
     "sandboxImageUri": "gemini-cli-sandbox"
   },
   "dependencies": {
-    "@google/gemini-cli-core": "*",
+    "@google/genai": "^1.4.0",
+    "@google/gemini-cli-core": "0.1.5",
     "@types/update-notifier": "^6.0.8",
     "command-exists": "^1.2.9",
     "diff": "^7.0.0",
@@ -39,9 +40,9 @@
     "ink": "^5.2.0",
     "ink-big-text": "^2.0.0",
     "ink-gradient": "^3.0.0",
+    "ink-link": "^4.0.0",
     "ink-select-input": "^6.0.0",
     "ink-spinner": "^5.0.0",
-    "ink-link": "^4.0.0",
     "ink-text-input": "^6.0.0",
     "lowlight": "^3.3.0",
     "mime-types": "^2.1.4",
@@ -66,7 +67,7 @@
     "@types/yargs": "^17.0.32",
     "ink-testing-library": "^4.0.0",
     "jsdom": "^26.1.0",
-    "typescript": "^5.3.3",
+    "typescript": "^5.8.3",
     "vitest": "^3.1.1"
   },
   "engines": {
